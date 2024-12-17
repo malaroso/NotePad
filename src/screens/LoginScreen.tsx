@@ -7,6 +7,7 @@ import {
   Text,
   Image,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -21,16 +22,27 @@ const NOTEPAD_LOGO = 'https://cdn-icons-png.flaticon.com/512/1157/1157000.png';
 const FACEBOOK_ICON = 'https://cdn-icons-png.flaticon.com/512/124/124010.png';
 const GOOGLE_ICON = 'https://cdn-icons-png.flaticon.com/512/300/300221.png';
 
-export const LoginScreen: React.FC<LoginScreenProps> = () => {
-  const [email, setEmail] = useState('');
+export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const { onLogin } = useAuth();
 
   const handleLogin = async () => {
     try {
-      await onLogin?.(email, password);
+      if (username && password) {
+        const result = await onLogin?.(username, password);
+        
+        if (result?.success) {
+          navigation.navigate('Home');
+        } else {
+          Alert.alert('Hata', result?.message || 'Giriş yapılamadı');
+        }
+      } else {
+        Alert.alert('Uyarı', 'Lütfen tüm alanları doldurun!');
+      }
     } catch (error) {
-      console.error(error);
+      console.error('Login error:', error);
+      Alert.alert('Hata', 'Bir hata oluştu');
     }
   };
 
@@ -51,10 +63,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = () => {
         <Text style={styles.loginTitle}>Login Account</Text>
         <TextInput
           style={styles.input}
-          placeholder="Your Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
+          placeholder="Kullanıcı Adı"
+          value={username}
+          onChangeText={setUsername}
           autoCapitalize="none"
         />
         <TextInput
