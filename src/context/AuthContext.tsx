@@ -2,9 +2,8 @@ import axiosInstance from '../config/axios';
 import { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from 'expo-secure-store';
 import eventEmitter from '../utils/eventEmitter';
-import { API_URL } from '../config/constants';
-import { checkApiConnection } from '../utils/networkUtils';
 
+// Sadece kullanılan prop'ları tutalım
 interface AuthProps {
     authState?: { 
         token: string | null;
@@ -31,19 +30,18 @@ export const AuthProvider = ({children}: any) => {
     });
     
     useEffect(() => {
+        console.log('AuthContext Token:', authState.token);
         const loadToken = async () => {
             const token = await SecureStore.getItemAsync(TOKEN_KEY);
-            console.log('Token:', token);
             if (token) {
                 setAuthState({
                     token: token,
                     authenticated: true
                 });
             }
-        }
+        };
         loadToken();
 
-        // Auth hatalarını dinle
         const handleAuthError = () => {
             setAuthState({
                 token: null,
@@ -52,7 +50,6 @@ export const AuthProvider = ({children}: any) => {
         };
 
         eventEmitter.addListener('auth_error', handleAuthError);
-
         return () => {
             eventEmitter.removeListener('auth_error', handleAuthError);
         };
@@ -60,14 +57,10 @@ export const AuthProvider = ({children}: any) => {
 
     const login = async (username: string, password: string) => {
         try {
-            console.log('Login attempt with:', { username, password });
-            
             const response = await axiosInstance.post('/login', {
                 username,
                 password
             });
-
-            console.log('Login response:', response.data);
 
             if (response.data.status && response.data.token) {
                 const token = response.data.token;
@@ -90,31 +83,9 @@ export const AuthProvider = ({children}: any) => {
             };
 
         } catch (error: any) {
-            // Hata detaylarını daha ayrıntılı loglayalım
-            console.log('Login error full details:', {
-                message: error.message,
-                code: error.code,
-                response: error.response?.data,
-                status: error.response?.status,
-                headers: error.response?.headers,
-                config: error.config,
-                request: error.request
-            });
-
-            if (!error.response) {
-                return {
-                    success: false,
-                    message: "Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin."
-                };
-            }
-
-            // Sunucudan gelen hata mesajını gösterelim
-            const errorMessage = error.response?.data?.message || error.message || "Bir hata oluştu";
-            console.log('Error message:', errorMessage);
-
             return {
                 success: false,
-                message: errorMessage
+                message: error.response?.data?.message || "Bir hata oluştu"
             };
         }
     };
