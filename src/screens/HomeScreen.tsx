@@ -14,6 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { getAllTodos } from '../services/todoService';
 import { Todo } from '../types/todo';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
 type MenuItem = {
   id: string;
@@ -22,6 +25,8 @@ type MenuItem = {
   isRed?: boolean;
 };
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export const HomeScreen = () => {
   const { authState, onLogout } = useAuth();
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -29,6 +34,7 @@ export const HomeScreen = () => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const navigation = useNavigation<NavigationProp>();
 
   useEffect(() => {
     loadTodos();
@@ -84,6 +90,11 @@ export const HomeScreen = () => {
 
   const menuItems: MenuItem[] = [
     {
+      id: 'profile',
+      icon: 'https://cdn-icons-png.flaticon.com/512/1077/1077063.png',
+      title: 'Profil'
+    },
+    {
       id: 'notifications',
       icon: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png',
       title: 'Notifications'
@@ -119,6 +130,22 @@ export const HomeScreen = () => {
       title: 'Logout'
     },
   ];
+
+  const handleMenuItemPress = (id: string) => {
+    switch (id) {
+      case 'profile':
+        navigation.navigate('Profile');
+        hideMenu();
+        break;
+      case 'logout':
+        handleLogout();
+        hideMenu();
+        break;
+      default:
+        hideMenu();
+        break;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -162,18 +189,26 @@ export const HomeScreen = () => {
           >
             {/* Profil Bölümü */}
             <View style={styles.profileSection}>
+              <TouchableOpacity 
+                style={styles.profileSectionContent}
+                onPress={() => {
+                  hideMenu();
+                  navigation.navigate('Profile');
+                }}
+              >
+                <Image
+                  source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
+                  style={styles.profileAvatar}
+                />
+                <Text style={styles.profileName}>Malik Vaudruce</Text>
+                <Text style={styles.profileEmail}>malik12v5druce@gmail.com</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.backButton} onPress={hideMenu}>
                 <Image
                   source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }}
                   style={styles.backIcon}
                 />
               </TouchableOpacity>
-              <Image
-                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
-                style={styles.profileAvatar}
-              />
-              <Text style={styles.profileName}>Malik Vaudruce</Text>
-              <Text style={styles.profileEmail}>malik12v5druce@gmail.com</Text>
             </View>
 
             {/* Menü Öğeleri */}
@@ -182,16 +217,13 @@ export const HomeScreen = () => {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.menuItem}
-                  onPress={() => {
-                    if (item.id === 'logout') handleLogout();
-                    hideMenu();
-                  }}
+                  onPress={() => handleMenuItemPress(item.id)}
                 >
                   <View style={styles.menuItemLeft}>
                     <Image source={{ uri: item.icon }} style={styles.menuItemIcon} />
                     <Text style={[
                       styles.menuItemText,
-                      item.isRed && styles.menuItemTextRed
+                      item.id === 'logout' && styles.menuItemTextRed
                     ]}>{item.title}</Text>
                   </View>
                   <Image
@@ -570,5 +602,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 20,
     color: '#FF3B30',
+  },
+  profileSectionContent: {
+    alignItems: 'center',
+    width: '100%',
   },
 });
