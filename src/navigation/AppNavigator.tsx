@@ -5,6 +5,10 @@ import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { AllNotesScreen } from '../screens/AllNotesScreen';
+import { NoteDetailScreen } from '../screens/NoteDetailScreen';
+import { AddNoteScreen } from '../screens/AddNoteScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 
@@ -29,6 +33,26 @@ export const AppNavigator = () => {
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen 
+              name="AllNotes" 
+              component={AllNotesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="NoteDetail" 
+              component={NoteDetailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="AddNote" 
+              component={AddNoteScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Notifications" 
+              component={NotificationsScreen}
+              options={{ headerShown: false }}
+            />
           </>
         )}
       </Stack.Navigator>
