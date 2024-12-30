@@ -17,6 +17,9 @@ import { Todo } from '../types/todo';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { Note } from '../types/note';
+import { getAllNotes } from '../services/noteService';
+import { getUnreadCount } from '../services/notificationService';
 
 type MenuItem = {
   id: string;
@@ -35,10 +38,36 @@ export const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const navigation = useNavigation<NavigationProp>();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isNotesLoading, setIsNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState<string>('');
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     loadTodos();
   }, []);
+
+  useEffect(() => {
+    loadNotes();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadNotes();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    loadUnreadCount();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadUnreadCount();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadTodos = async () => {
     try {
@@ -52,6 +81,32 @@ export const HomeScreen = () => {
       setError(error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadNotes = async () => {
+    try {
+      setIsNotesLoading(true);
+      const response = await getAllNotes();
+      if (response.status) {
+        setNotes(response.data);
+      }
+    } catch (error: any) {
+      console.log('Notes fetch error:', error);
+      setNotesError(error.message);
+    } finally {
+      setIsNotesLoading(false);
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    try {
+      const response = await getUnreadCount();
+      if (response.status) {
+        setUnreadCount(response.count);
+      }
+    } catch (error) {
+      console.error('Bildirim sayısı alınırken hata:', error);
     }
   };
 
@@ -151,7 +206,6 @@ export const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-
         <View style={styles.userInfo}>
           <Image
             source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
@@ -159,12 +213,33 @@ export const HomeScreen = () => {
           />
           <Text style={styles.greeting}>Hi, {authState?.username || 'User'}</Text>
         </View>
-        <TouchableOpacity onPress={showMenu}>
-          <Image
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/8017/8017760.png' }}
-            style={styles.menuIcon}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={() => {
+              navigation.navigate('Notifications');
+              setUnreadCount(0);
+            }}
+          >
+            <Image
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png' }}
+              style={styles.notificationIcon}
+            />
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={showMenu}>
+            <Image
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/8017/8017760.png' }}
+              style={styles.menuIcon}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Drawer Menu */}
@@ -237,70 +312,133 @@ export const HomeScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Notes Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionMore}>...</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity style={[styles.noteCard, styles.addNoteCard]}>
-            <View style={styles.addIcon}>
-              <Text style={styles.addIconText}>+</Text>
-            </View>
-            <Text style={styles.addNoteText}>Add new note</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.noteCard, styles.darkNoteCard]}>
-            <Text style={styles.darkNoteTitle}>Pass for inst</Text>
-            <Text style={styles.darkNoteContent}>login: ovan{'\n'}pass: 123212</Text>
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        {/* Notes Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionMore}>...</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-      </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <TouchableOpacity 
+              style={[styles.noteCard, styles.addNoteCard]}
+              onPress={() => navigation.navigate('AddNote')}
+            >
+              <View style={styles.addIcon}>
+                <Text style={styles.addIconText}>+</Text>
+              </View>
+              <Text style={styles.addNoteText}>Add new note</Text>
+            </TouchableOpacity>
 
-      {/* To-do Lists Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>To-do lists</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionMore}>...</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.noteCard, styles.allNotesCard]}
+              onPress={() => navigation.navigate('AllNotes')}
+            >
+              <View style={styles.allNotesIcon}>
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991106.png' }}
+                  style={styles.allNotesIconImage}
+                />
+              </View>
+              <Text style={styles.allNotesText}>Tüm Notlarım</Text>
+              <Text style={styles.noteCount}>{notes.length} not</Text>
+            </TouchableOpacity>
+
+            {isNotesLoading ? (
+              <View style={[styles.noteCard, styles.loadingCard]}>
+                <Text style={styles.loadingText}>Yükleniyor...</Text>
+              </View>
+            ) : notesError ? (
+              <View style={[styles.noteCard, styles.errorCard]}>
+                <Text style={styles.errorText}>{notesError}</Text>
+              </View>
+            ) : (
+              notes.map((note) => (
+                <TouchableOpacity
+                  key={note.note_id}
+                  style={[styles.noteCard, styles.darkNoteCard]}
+                  onPress={() => navigation.navigate('NoteDetail', { noteId: note.note_id })}
+                >
+                  <Text style={styles.darkNoteTitle}>{note.title}</Text>
+                  <Text style={styles.darkNoteContent}>
+                    {note.content.length > 50 
+                      ? note.content.substring(0, 50) + '...' 
+                      : note.content}
+                  </Text>
+                  <Text style={styles.noteDate}>
+                    {new Date(note.created_at).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'long'
+                    })}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </View>
 
-        <ScrollView style={styles.todoList}>
-          {isLoading ? (
-            <Text style={styles.loadingText}>Yükleniyor...</Text>
-          ) : error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : (
-            todos.map(todo => (
-              <TouchableOpacity
-                key={todo.id}
-                style={styles.todoItem}
-                onPress={() => toggleTodo(todo.id)}
-              >
-                <View style={styles.todoLeft}>
-                  <View style={[
-                    styles.checkbox,
-                    todo.status === 'completed' && styles.checkboxChecked
-                  ]}>
-                    {todo.status === 'completed' && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[
-                    styles.todoText,
-                    todo.status === 'completed' && styles.todoTextCompleted
-                  ]}>{todo.task}</Text>
+        {/* To-do Lists Section */}
+        <View style={[styles.section, styles.todoSection]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>To-do lists</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionMore}>...</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView 
+            style={styles.todoList}
+            showsVerticalScrollIndicator={false}
+          >
+            {isLoading ? (
+              <Text style={styles.loadingText}>Yükleniyor...</Text>
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : (
+              <>
+                <View style={styles.todoHeader}>
+                  <Text style={styles.todoHeaderTitle}>Bugünün Görevleri</Text>
+                  <Text style={styles.todoCount}>{todos.length} görev</Text>
                 </View>
-                <Text style={styles.todoTime}>
-                  {new Date(todo.created_at).toLocaleDateString()}
-                </Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
+                {todos.map(todo => (
+                  <TouchableOpacity
+                    key={todo.id}
+                    style={styles.todoItem}
+                    onPress={() => toggleTodo(todo.id)}
+                  >
+                    <View style={styles.todoLeft}>
+                      <TouchableOpacity 
+                        style={[
+                          styles.checkbox,
+                          todo.status === 'completed' && styles.checkboxChecked
+                        ]}
+                        onPress={() => toggleTodo(todo.id)}
+                      >
+                        {todo.status === 'completed' && <Text style={styles.checkmark}>✓</Text>}
+                      </TouchableOpacity>
+                      <View>
+                        <Text style={[
+                          styles.todoText,
+                          todo.status === 'completed' && styles.todoTextCompleted
+                        ]}>{todo.task}</Text>
+                        <Text style={styles.todoDate}>
+                          {new Date(todo.created_at).toLocaleDateString('tr-TR', {
+                            day: 'numeric',
+                            month: 'long'
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+          </ScrollView>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -317,6 +455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 20,
+    paddingTop: 16,
   },
   menuIcon: {
     width: 24,
@@ -450,20 +589,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     alignSelf: 'flex-start',
   },
+  todoSection: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  todoContainer: {
+    flex: 1,
+  },
   todoList: {
+    flex: 1,
     paddingHorizontal: 16,
+  },
+  todoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  todoHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  todoCount: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    backgroundColor: '#F5F6FA',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   todoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   checkbox: {
     width: 24,
@@ -482,18 +660,21 @@ const styles = StyleSheet.create({
   checkmark: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: 'bold',
   },
   todoText: {
     fontSize: 16,
-    color: '#333',
+    color: '#2C3E50',
+    marginBottom: 4,
+    fontWeight: '500',
   },
   todoTextCompleted: {
     textDecorationLine: 'line-through',
-    color: '#999',
+    color: '#95A5A6',
   },
-  todoTime: {
-    fontSize: 14,
-    color: '#999',
+  todoDate: {
+    fontSize: 12,
+    color: '#95A5A6',
   },
   todoActions: {
     flexDirection: 'row',
@@ -606,5 +787,87 @@ const styles = StyleSheet.create({
   profileSectionContent: {
     alignItems: 'center',
     width: '100%',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  notificationIcon: {
+    width: 24,
+    height: 24,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  loadingCard: {
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorCard: {
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noteDate: {
+    fontSize: 12,
+    color: '#B8C2CC',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  allNotesCard: {
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allNotesIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  allNotesIconImage: {
+    width: 24,
+    height: 24,
+  },
+  allNotesText: {
+    color: '#2C3E50',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  noteCount: {
+    color: '#7F8C8D',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  unreadBadge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    paddingHorizontal: 4,
   },
 });
