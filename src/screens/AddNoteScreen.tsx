@@ -1,112 +1,123 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Image,
-  Switch,
   ScrollView,
+  Switch,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, RouteProp, useRoute, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { addNote, updateNote } from '../services/noteService';
-import { RootStackParamList } from '../types/navigation';
-
-type AddNoteRouteProp = RouteProp<RootStackParamList, 'AddNote'>;
+import { getCategories, Category } from '../services/categoryService';
 
 export const AddNoteScreen = () => {
-  const route = useRoute<AddNoteRouteProp>();
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddNote'>>();
   const { note, isEditing } = route.params || {};
-  
+
   const [title, setTitle] = useState(note?.title || '');
   const [content, setContent] = useState(note?.content || '');
   const [isPublic, setIsPublic] = useState(note?.is_public === 1);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(note?.category_id || null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const navigation = useNavigation();
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
 
-  const handleSave = async () => {
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const response = await getCategories();
+      if (response.status) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('Kategoriler yüklenirken hata:', error);
+      Alert.alert('Hata', 'Kategoriler yüklenirken bir hata oluştu');
+    } finally {
+      setIsCategoriesLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
-      Alert.alert('Uyarı', 'Başlık ve içerik alanları boş bırakılamaz.');
+      Alert.alert('Uyarı', 'Başlık ve içerik alanları boş bırakılamaz');
       return;
     }
 
+    if (!selectedCategory) {
+      Alert.alert('Uyarı', 'Lütfen bir kategori seçiniz');
+      return;
+    }
+
+    const noteData = {
+      title: title.trim(),
+      content: content.trim(),
+      category_id: selectedCategory,
+      is_public: isPublic ? 1 : 0
+    };
+
     try {
       setIsLoading(true);
-      
+      let response;
+
       if (isEditing && note) {
-        const response = await updateNote({
+        response = await updateNote({
           note_id: note.note_id,
-          title: title.trim(),
-          content: content.trim(),
-          category_id: note.category_id,
-          is_public: isPublic ? 1 : 0,
+          ...noteData
         });
-
-        if (response.status) {
-          navigation.goBack();
-          
-          Alert.alert('Başarılı', 'Not başarıyla güncellendi.');
-
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 1,
-              routes: [
-                { name: 'Home' },
-                { name: 'AllNotes' },
-              ],
-            })
-          );
-        }
       } else {
-        const response = await addNote({
-          title: title.trim(),
-          content: content.trim(),
-          is_public: isPublic ? 1 : 0,
-        });
-
-        if (response.status) {
-          Alert.alert('Başarılı', 'Not başarıyla kaydedildi.', [
-            { text: 'Tamam', onPress: () => navigation.goBack() }
-          ]);
-        }
+        response = await addNote(noteData);
       }
-    } catch (error: any) {
-      Alert.alert('Hata', error.message || 'İşlem sırasında bir hata oluştu.');
+
+      if (response.status) {
+        Alert.alert(
+          'Başarılı', 
+          isEditing ? 'Not başarıyla güncellendi' : 'Not başarıyla kaydedildi',
+          [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert('Hata', 'Not kaydedilirken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Not kaydetme hatası:', error);
+      Alert.alert('Hata', 'Not kaydedilirken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: isEditing ? 'Notu Düzenle' : 'Yeni Not'
+    });
+  }, [isEditing]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={styles.cancelButton} 
           onPress={() => navigation.goBack()}
         >
-          <Image
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }}
-            style={styles.backIcon}
-          />
+          <Text style={styles.cancelButtonText}>İptal</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? 'Notu Düzenle' : 'Yeni Not'}
-        </Text>
         <TouchableOpacity 
-          style={[styles.saveButton, (!title.trim() || !content.trim()) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isLoading || !title.trim() || !content.trim()}
+          style={styles.saveButton} 
+          onPress={handleSubmit}
+          disabled={isLoading}
         >
           {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditing ? 'Güncelle' : 'Kaydet'}
-            </Text>
+            <Text style={styles.saveButtonText}>Kaydet</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -114,29 +125,66 @@ export const AddNoteScreen = () => {
       <ScrollView style={styles.content}>
         <TextInput
           style={styles.titleInput}
-          placeholder="Not başlığı"
+          placeholder="Başlık"
           value={title}
           onChangeText={setTitle}
-          maxLength={100}
+          placeholderTextColor="#A0AEC0"
         />
 
         <TextInput
           style={styles.contentInput}
-          placeholder="Notunuzu buraya yazın..."
+          placeholder="İçerik"
           value={content}
           onChangeText={setContent}
           multiline
-          textAlignVertical="top"
+          placeholderTextColor="#A0AEC0"
         />
 
-        <View style={styles.optionsContainer}>
-          <View style={styles.optionItem}>
-            <Text style={styles.optionText}>Herkese Açık</Text>
+        {/* Kategori Seçimi */}
+        <View style={styles.categoriesSection}>
+          <Text style={styles.sectionTitle}>Kategori</Text>
+          {isCategoriesLoading ? (
+            <ActivityIndicator size="small" color="#4B7BF5" />
+          ) : (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoriesContainer}
+            >
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.category_id}
+                  style={[
+                    styles.categoryButton,
+                    selectedCategory === category.category_id && styles.categoryButtonSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCategory(category.category_id);
+                    console.log('Seçilen kategori ID:', category.category_id);
+                  }}
+                >
+                  <Text style={[
+                    styles.categoryButtonText,
+                    selectedCategory === category.category_id && styles.categoryButtonTextSelected
+                  ]}>
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Gizlilik Ayarı */}
+        <View style={styles.privacySection}>
+          <Text style={styles.sectionTitle}>Gizlilik</Text>
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Herkese Açık</Text>
             <Switch
               value={isPublic}
               onValueChange={setIsPublic}
-              trackColor={{ false: '#E8E8E8', true: '#4B7BF5' }}
-              thumbColor="#fff"
+              trackColor={{ false: '#E2E8F0', true: '#4B7BF5' }}
+              thumbColor={isPublic ? '#fff' : '#fff'}
             />
           </View>
         </View>
@@ -156,31 +204,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#E2E8F0',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  backButton: {
+  cancelButton: {
     padding: 8,
   },
-  backIcon: {
-    width: 24,
-    height: 24,
+  cancelButtonText: {
+    color: '#4B7BF5',
+    fontSize: 16,
   },
   saveButton: {
     backgroundColor: '#4B7BF5',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#B8C2CC',
-  },
   saveButtonText: {
     color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
   content: {
@@ -188,32 +229,62 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   titleInput: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-    color: '#2C3E50',
     marginBottom: 16,
-    padding: 0,
+    color: '#2D3748',
   },
   contentInput: {
     fontSize: 16,
-    color: '#34495E',
     lineHeight: 24,
     minHeight: 200,
-    padding: 0,
+    textAlignVertical: 'top',
+    color: '#2D3748',
   },
-  optionsContainer: {
+  categoriesSection: {
     marginTop: 24,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
   },
-  optionItem: {
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 12,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  categoryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F7FAFC',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  categoryButtonSelected: {
+    backgroundColor: '#4B7BF5',
+    borderColor: '#4B7BF5',
+  },
+  categoryButtonText: {
+    color: '#4A5568',
+    fontSize: 14,
+  },
+  categoryButtonTextSelected: {
+    color: '#fff',
+  },
+  privacySection: {
+    marginTop: 24,
+  },
+  switchContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 8,
   },
-  optionText: {
+  switchLabel: {
     fontSize: 16,
-    color: '#2C3E50',
+    color: '#4A5568',
   },
 }); 

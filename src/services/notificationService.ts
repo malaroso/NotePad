@@ -77,4 +77,14 @@ export const getFilteredNotifications = async (filters: NotificationFilters): Pr
   } catch (error) {
     throw error;
   }
+};
+
+export const deleteAllNotifications = async () => {
+  try {
+    const response = await axios.delete('/notifications/all');
+    return response.data;
+  } catch (error) {
+    console.error('Tüm bildirimleri silme hatası:', error);
+    throw error;
+  }
 }; 

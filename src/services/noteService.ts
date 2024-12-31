@@ -11,7 +11,7 @@ type NoteDetailResponse = {
   data: Note;
 };
 
-type AddNoteRequest = {
+export type AddNoteRequest = {
   title: string;
   content: string;
   category_id?: number | null;
@@ -61,11 +61,27 @@ export const getNoteDetail = async (noteId: number): Promise<NoteDetailResponse>
   }
 };
 
-export const addNote = async (noteData: AddNoteRequest): Promise<AddNoteResponse> => {
+export const addNote = async (noteData: AddNoteRequest) => {
   try {
-    const response = await axios.post<AddNoteResponse>('/addNote', noteData);
+    console.log('API isteği verisi:', {
+      title: noteData.title,
+      content: noteData.content,
+      category_id: noteData.category_id,
+      is_public: noteData.is_public
+    });
+
+    const response = await axios.post('/addNote', {
+      title: noteData.title,
+      content: noteData.content,
+      category_id: noteData.category_id,
+      is_public: noteData.is_public
+    });
+
+    console.log('API yanıtı:', response.data);
+
     return response.data;
   } catch (error) {
+    console.error('Not ekleme hatası:', error);
     throw error;
   }
 };
@@ -75,6 +91,7 @@ export const updateNote = async (noteData: UpdateNoteRequest): Promise<UpdateNot
     const response = await axios.put<UpdateNoteResponse>('/notes', noteData);
     return response.data;
   } catch (error) {
+    console.error('Not güncelleme hatası:', error);
     throw error;
   }
 };

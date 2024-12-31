@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { getNotifications, markNotificationAsRead, deleteNotification, getFilteredNotifications } from '../services/notificationService';
+import { getNotifications, markNotificationAsRead, deleteNotification, getFilteredNotifications, deleteAllNotifications } from '../services/notificationService';
 import { Notification } from '../types/notification';
 
 export const NotificationsScreen = () => {
@@ -104,9 +104,62 @@ export const NotificationsScreen = () => {
       const response = await deleteNotification(notificationId);
       if (response.status) {
         setNotifications(notifications.filter(n => n.notification_id !== notificationId));
+        Alert.alert('Başarılı', 'Bildirim başarıyla silindi');
+      } else {
+        Alert.alert('İşlem Başarısız', response.message || 'Bildirim silinirken bir hata oluştu');
       }
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Bildirim silinirken bir hata oluştu');
+      const errorMessage = error.response?.data?.message || 
+                          'Bildirim silinirken bir hata oluştu';
+      Alert.alert('Hata', errorMessage);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      'Tüm Bildirimleri Sil',
+      'Tüm bildirimleri silmek istediğinizden emin misiniz?',
+      [
+        {
+          text: 'İptal',
+          style: 'cancel'
+        },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await deleteAllNotifications();
+              if (response.status) {
+                loadNotifications();
+                Alert.alert('Başarılı', 'Tüm bildirimler silindi');
+              } else {
+                Alert.alert('İşlem Başarısız', response.message || 'Bildirimler silinirken bir hata oluştu');
+              }
+            } catch (error: any) {
+              const errorMessage = error.response?.data?.message || 
+                                 'Bildirimler silinirken bir hata oluştu';
+              Alert.alert('Hata', errorMessage);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await Promise.all(
+        notifications
+          .filter(n => n.is_read === 0)
+          .map(n => markNotificationAsRead(n.notification_id))
+      );
+      setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
+      Alert.alert('Başarılı', 'Tüm bildirimler okundu olarak işaretlendi');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 
+                          'Bildirimler okundu işaretlenirken bir hata oluştu';
+      Alert.alert('Hata', errorMessage);
     }
   };
 
@@ -202,25 +255,32 @@ export const NotificationsScreen = () => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Bildirimler</Text>
         </View>
-        {notifications.some(n => n.is_read === 0) && (
-          <TouchableOpacity 
-            style={styles.markAllReadButton}
-            onPress={async () => {
-              try {
-                await Promise.all(
-                  notifications
-                    .filter(n => n.is_read === 0)
-                    .map(n => markNotificationAsRead(n.notification_id))
-                );
-                setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
-              } catch (error) {
-                console.error('Bildirimler okundu işaretlenirken hata:', error);
-              }
-            }}
-          >
-            <Text style={styles.markAllReadText}>Tümünü Okundu İşaretle</Text>
-          </TouchableOpacity>
-        )}
+        
+        <View style={styles.headerActions}>
+          {notifications.some(n => n.is_read === 0) && (
+            <TouchableOpacity 
+              style={styles.headerActionButton}
+              onPress={handleMarkAllAsRead}
+            >
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2099/2099100.png' }}
+                style={[styles.headerActionIcon, { tintColor: '#4B7BF5' }]}
+              />
+            </TouchableOpacity>
+          )}
+          
+          {notifications.length > 0 && (
+            <TouchableOpacity 
+              style={[styles.headerActionButton, styles.deleteAllButton]}
+              onPress={handleDeleteAll}
+            >
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3405/3405244.png' }}
+                style={[styles.headerActionIcon, { tintColor: '#EF4444' }]}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.filterSection}>
@@ -327,6 +387,7 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   backButton: {
     padding: 8,
@@ -528,5 +589,25 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginRight: 6,
+  },
+  deleteAllButton: {
+    backgroundColor: '#FEE2E2',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EBF5FF',
+  },
+  headerActionIcon: {
+    width: 20,
+    height: 20,
   },
 }); 

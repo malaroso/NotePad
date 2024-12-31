@@ -11,15 +11,19 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAllNotes } from '../services/noteService';
+import { getAllNotes, deleteNote } from '../services/noteService';
 import { Note } from '../types/note';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const AllNotesScreen = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
 
   useEffect(() => {
     loadNotes();
@@ -96,6 +100,17 @@ export const AllNotesScreen = () => {
       );
     } else {
       // Android için custom modal yapılabilir
+    }
+  };
+
+  const handleDelete = async (noteId: number) => {
+    try {
+      const response = await deleteNote(noteId);
+      if (response.status) {
+        setNotes(notes.filter(note => note.note_id !== noteId));
+      }
+    } catch (error: any) {
+      Alert.alert('Hata', error.message || 'Not silinirken bir hata oluştu');
     }
   };
 
@@ -178,7 +193,7 @@ export const AllNotesScreen = () => {
         <Text style={styles.headerTitle}>Tüm Notlarım</Text>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => navigation.navigate('AddNote')}
+          onPress={() => navigation.navigate('AddNote', { note: undefined, isEditing: false })}
         >
           <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>

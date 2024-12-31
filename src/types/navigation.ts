@@ -1,3 +1,6 @@
+import { Note } from "./note";
+import { UserDetail } from "./userDetail";
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
@@ -12,4 +15,15 @@ export type RootStackParamList = {
     isEditing?: boolean;
   };
   Notifications: undefined;
+  TodoList: undefined;
+  CategoryNotes: {
+    categoryId: number;
+    categoryName: string;
+  };
+  EditProfile: {
+    currentUser: UserDetail;
+  };
+  ChangePassword: undefined;
+  FAQ: undefined;
+  About: undefined;
 }; 

@@ -8,6 +8,7 @@ interface AuthProps {
     authState?: { 
         token: string | null;
         authenticated: boolean | null;
+        username?: string;
     };
     onLogin?: (username: string, password: string) => Promise<any>;
     onLogout?: () => Promise<any>;
@@ -24,6 +25,7 @@ export const AuthProvider = ({children}: any) => {
     const [authState, setAuthState] = useState<{
         token: string | null;
         authenticated: boolean | null;
+        username?: string;
     }>({
         token: null,
         authenticated: null

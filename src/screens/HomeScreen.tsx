@@ -9,39 +9,55 @@ import {
   Image,
   Modal,
   Animated,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { getAllTodos } from '../services/todoService';
+import { getAllTodos, addTodo, updateTodoStatus } from '../services/todoService';
 import { Todo } from '../types/todo';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Note } from '../types/note';
 import { getAllNotes } from '../services/noteService';
 import { getUnreadCount } from '../services/notificationService';
+import { getCategories, Category, addCategory } from '../services/categoryService';
+import { getUserDetail } from '../services/userService';
 
 type MenuItem = {
   id: string;
   icon: string;
   title: string;
   isRed?: boolean;
+  badge?: number;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen = () => {
-  const { authState, onLogout } = useAuth();
+  const navigation = useNavigation();
+  const { onLogout } = useAuth();
+  const [username, setUsername] = useState('');
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const navigation = useNavigation<NavigationProp>();
   const [notes, setNotes] = useState<Note[]>([]);
   const [isNotesLoading, setIsNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isAddTodoModalVisible, setIsAddTodoModalVisible] = useState(false);
+  const [newTodoTask, setNewTodoTask] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string>('');
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const route = useRoute();
 
   useEffect(() => {
     loadTodos();
@@ -68,6 +84,40 @@ export const HomeScreen = () => {
 
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCategories();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (route.params?.refresh) {
+        refreshAll();
+        navigation.setParams({ refresh: undefined });
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, route.params?.refresh]);
+
+  useEffect(() => {
+    loadUserDetails();
+  }, []);
+
+  const loadUserDetails = async () => {
+    try {
+      const response = await getUserDetail();
+      if (response.status) {
+        setUsername(response.data.username);
+      }
+    } catch (error) {
+      console.error('Kullanıcı bilgileri alınırken hata:', error);
+    }
+  };
 
   const loadTodos = async () => {
     try {
@@ -110,20 +160,72 @@ export const HomeScreen = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const loadCategories = async () => {
     try {
-      await onLogout?.();
-    } catch (error) {
-      console.error('Logout error:', error);
+      setIsCategoriesLoading(true);
+      const response = await getCategories();
+      if (response.status) {
+        setCategories(response.data);
+      }
+    } catch (error: any) {
+      console.log('Categories fetch error:', error);
+      setCategoriesError(error.message);
+    } finally {
+      setIsCategoriesLoading(false);
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Çıkış Yap',
+      'Uygulamadan çıkış yapmak istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { 
+          text: 'Çıkış Yap', 
+          onPress: () => onLogout?.(),
+          style: 'destructive'
+        }
+      ]
+    );
+  };
+
   const toggleTodo = async (id: number) => {
-    setTodos(todos.map(todo => 
-      todo.id === id 
-        ? { ...todo, status: todo.status === 'completed' ? 'not_completed' : 'completed' } 
-        : todo
-    ));
+    try {
+      const todo = todos.find(t => t.id === id);
+      if (!todo) return;
+
+      const newStatus = todo.status === 'completed' ? 'not_completed' : 'completed';
+      
+      // Optimistic update (UI'ı hemen güncelle)
+      setTodos(todos.map(todo => 
+        todo.id === id 
+          ? { ...todo, status: newStatus } 
+          : todo
+      ));
+
+      // API'ye istek gönder
+      const response = await updateTodoStatus(id, newStatus);
+      
+      if (!response.status) {
+        // Eğer API isteği başarısız olursa, değişiklikleri geri al
+        setTodos(todos.map(todo => 
+          todo.id === id 
+            ? { ...todo, status: todo.status } 
+            : todo
+        ));
+        Alert.alert('Hata', 'Görev durumu güncellenirken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Todo status update error:', error);
+      // Hata durumunda değişiklikleri geri al
+      setTodos(todos.map(todo => 
+        todo.id === id 
+          ? { ...todo, status: todo.status } 
+          : todo
+      ));
+      Alert.alert('Hata', 'Görev durumu güncellenirken bir hata oluştu');
+    }
   };
 
   const showMenu = () => {
@@ -152,22 +254,8 @@ export const HomeScreen = () => {
     {
       id: 'notifications',
       icon: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png',
-      title: 'Notifications'
-    },
-    {
-      id: 'email',
-      icon: 'https://cdn-icons-png.flaticon.com/512/2099/2099199.png',
-      title: 'Email Notifications'
-    },
-    {
-      id: 'language',
-      icon: 'https://cdn-icons-png.flaticon.com/512/484/484582.png',
-      title: 'Language'
-    },
-    {
-      id: 'theme',
-      icon: 'https://cdn-icons-png.flaticon.com/512/5262/5262027.png',
-      title: 'Theme: Light Mode'
+      title: 'Bildirimler',
+      badge: unreadCount > 0 ? unreadCount : undefined
     },
     {
       id: 'share',
@@ -179,17 +267,17 @@ export const HomeScreen = () => {
       icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828940.png',
       title: 'Help Center'
     },
-    {
-      id: 'logout',
-      icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828479.png',
-      title: 'Logout'
-    },
   ];
 
   const handleMenuItemPress = (id: string) => {
     switch (id) {
       case 'profile':
         navigation.navigate('Profile');
+        hideMenu();
+        break;
+      case 'notifications':
+        navigation.navigate('Notifications');
+        setUnreadCount(0);
         hideMenu();
         break;
       case 'logout':
@@ -202,123 +290,277 @@ export const HomeScreen = () => {
     }
   };
 
+  const openAddTodoModal = () => {
+    setIsAddTodoModalVisible(true);
+  };
+
+  const closeAddTodoModal = () => {
+    setIsAddTodoModalVisible(false);
+  };
+
+  const addNewTodo = async () => {
+    if (!newTodoTask.trim()) return;
+
+    try {
+      const response = await addTodo({
+        task: newTodoTask,
+        owner_id: 1,
+      });
+      
+      if (response && response.status) {
+        setNewTodoTask('');
+        setIsAddTodoModalVisible(false);
+        loadTodos(); // Listeyi yenile
+      }
+    } catch (error) {
+      console.error('Todo eklenirken hata:', error);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      Alert.alert('Uyarı', 'Kategori adı boş olamaz');
+      return;
+    }
+
+    try {
+      const response = await addCategory(newCategoryName.trim());
+
+      if (response.status) {
+        setNewCategoryName('');
+        setIsAddCategoryModalVisible(false);
+        loadCategories(); // Kategorileri yeniden yükle
+        Alert.alert('Başarılı', 'Kategori başarıyla eklendi');
+      } else {
+        Alert.alert('Hata', 'Kategori eklenirken bir hata oluştu');
+      }
+    } catch (error) {
+      console.error('Kategori ekleme hatası:', error);
+      Alert.alert('Hata', 'Kategori eklenirken bir hata oluştu');
+    }
+  };
+
+  const renderTodos = () => {
+    const completedTodos = todos
+      .filter(todo => todo.status === 'completed')
+      .slice(0, 5);
+    
+    const pendingTodos = todos
+      .filter(todo => todo.status === 'not_completed')
+      .slice(0, 5);
+
+    return (
+      <View style={styles.section}>
+        <ScrollView 
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.todoScrollView}
+        >
+          {/* Yeni Görev Ekle Kartı */}
+          <TouchableOpacity
+            style={[styles.todoCard, styles.addTodoCard]}
+            onPress={() => setIsAddTodoModalVisible(true)}
+          >
+            <View style={styles.addTodoIcon}>
+              <Text style={styles.addTodoIconText}>+</Text>
+            </View>
+            <Text style={styles.addTodoText}>Yeni Görev Ekle</Text>
+          </TouchableOpacity>
+
+          {/* Tüm Görevlerim Kartı */}
+          <TouchableOpacity
+            style={[styles.todoCard, styles.allTodosCard]}
+            onPress={() => navigation.navigate('TodoList')}
+          >
+            <View style={styles.allTodosIcon}>
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991106.png' }}
+                style={styles.allTodosIconImage}
+              />
+            </View>
+            <Text style={styles.allTodosText}>Tüm Görevlerim</Text>
+            <Text style={styles.todoCount}>{todos.length} görev</Text>
+          </TouchableOpacity>
+
+          {/* Bekleyen Görevler */}
+          {pendingTodos.map(todo => (
+            <TouchableOpacity
+              key={todo.id}
+              style={[styles.todoCard, styles.pendingTodoCard]}
+              onPress={() => toggleTodo(todo.id)}
+            >
+              <Text style={styles.todoTitle}>{todo.task}</Text>
+              <Text style={styles.todoDate}>
+                {new Date(todo.created_at).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long'
+                })}
+              </Text>
+              <View style={styles.todoStatus}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>Bekliyor</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          {/* Tamamlanan Görevler */}
+          {completedTodos.map(todo => (
+            <TouchableOpacity
+              key={todo.id}
+              style={[styles.todoCard, styles.completedTodoCard]}
+              onPress={() => toggleTodo(todo.id)}
+            >
+              <Text style={[styles.todoTitle, styles.completedTodoTitle]}>{todo.task}</Text>
+              <Text style={styles.todoDate}>
+                {new Date(todo.created_at).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long'
+                })}
+              </Text>
+              <View style={styles.todoStatus}>
+                <View style={[styles.statusDot, styles.completedStatusDot]} />
+                <Text style={[styles.statusText, styles.completedStatusText]}>Tamamlandı</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderCategories = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Kategoriler</Text>
+        <TouchableOpacity onPress={() => {}}>
+          <Text style={styles.sectionMore}>...</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+      >
+        {/* Yeni Kategori Ekle Kartı */}
+        <TouchableOpacity 
+          style={[styles.categoryCard, styles.addCategoryCard]}
+          onPress={() => setIsAddCategoryModalVisible(true)}
+        >
+          <View style={styles.addIcon}>
+            <Text style={styles.addIconText}>+</Text>
+          </View>
+          <Text style={styles.addCategoryText}>Yeni Kategori</Text>
+        </TouchableOpacity>
+
+        {/* Kategori Kartları */}
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.category_id}
+            style={styles.categoryCard}
+            onPress={() => navigation.navigate('CategoryNotes', {
+              categoryId: category.category_id,
+              categoryName: category.name
+            })}
+          >
+            <Text style={styles.categoryName}>{category.name}</Text>
+            <Text style={styles.categoryDate}>
+              {new Date(category.created_at).toLocaleDateString('tr-TR', {
+                day: 'numeric',
+                month: 'long'
+              })}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const refreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadTodos(),
+        loadNotes(),
+        loadCategories(),
+        loadUnreadCount()
+      ]);
+    } catch (error) {
+      console.error('Veriler yenilenirken hata:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <View style={styles.headerLeft}>
           <Image
             source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
             style={styles.avatar}
           />
-          <Text style={styles.greeting}>Hi, {authState?.username || 'User'}</Text>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greetingText}>Hi,</Text>
+            <Text style={styles.username}>{username}</Text>
+          </View>
         </View>
-        <View style={styles.headerIcons}>
+        <View style={styles.headerRight}>
           <TouchableOpacity 
-            style={styles.notificationButton}
-            onPress={() => {
-              navigation.navigate('Notifications');
-              setUnreadCount(0);
-            }}
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Notifications')}
           >
             <Image
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png' }}
-              style={styles.notificationIcon}
+              style={styles.headerIcon}
             />
             {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={showMenu}>
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Profile')}
+          >
             <Image
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/8017/8017760.png' }}
-              style={styles.menuIcon}
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1077/1077063.png' }}
+              style={styles.headerIcon}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={handleLogout}
+          >
+            <Image
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1828/1828490.png' }}
+              style={styles.headerIcon}
             />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Drawer Menu */}
-      <Modal
-        visible={isMenuVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={hideMenu}
+      {/* Main Content - ScrollView ile sarmalayalım */}
+      <ScrollView 
+        style={styles.mainContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refreshAll}
+            colors={['#4B7BF5']}
+            tintColor="#4B7BF5"
+          />
+        }
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={hideMenu}
-        >
-          <Animated.View
-            style={[
-              styles.drawerMenu,
-              {
-                transform: [{ translateX: slideAnim }],
-              },
-            ]}
-          >
-            {/* Profil Bölümü */}
-            <View style={styles.profileSection}>
-              <TouchableOpacity 
-                style={styles.profileSectionContent}
-                onPress={() => {
-                  hideMenu();
-                  navigation.navigate('Profile');
-                }}
-              >
-                <Image
-                  source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
-                  style={styles.profileAvatar}
-                />
-                <Text style={styles.profileName}>Malik Vaudruce</Text>
-                <Text style={styles.profileEmail}>malik12v5druce@gmail.com</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.backButton} onPress={hideMenu}>
-                <Image
-                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }}
-                  style={styles.backIcon}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Menü Öğeleri */}
-            <ScrollView style={styles.menuItems}>
-              {menuItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.menuItem}
-                  onPress={() => handleMenuItemPress(item.id)}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <Image source={{ uri: item.icon }} style={styles.menuItemIcon} />
-                    <Text style={[
-                      styles.menuItemText,
-                      item.id === 'logout' && styles.menuItemTextRed
-                    ]}>{item.title}</Text>
-                  </View>
-                  <Image
-                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271228.png' }}
-                    style={styles.chevronIcon}
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animated.View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Main Content */}
-      <View style={styles.mainContent}>
         {/* Notes Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Notes</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={openAddTodoModal}>
               <Text style={styles.sectionMore}>...</Text>
             </TouchableOpacity>
           </View>
@@ -326,7 +568,7 @@ export const HomeScreen = () => {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity 
               style={[styles.noteCard, styles.addNoteCard]}
-              onPress={() => navigation.navigate('AddNote')}
+              onPress={() => navigation.navigate('AddNote', { note: undefined, isEditing: false })}
             >
               <View style={styles.addIcon}>
                 <Text style={styles.addIconText}>+</Text>
@@ -381,14 +623,23 @@ export const HomeScreen = () => {
           </ScrollView>
         </View>
 
+        {/* Categories Section */}
+        {isCategoriesLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#4B7BF5" />
+          </View>
+        ) : categoriesError ? (
+          <Text style={styles.errorText}>{categoriesError}</Text>
+        ) : (
+          renderCategories()
+        )}
+
         {/* To-do Lists Section */}
         <View style={[styles.section, styles.todoSection]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>To-do lists</Text>
-            <TouchableOpacity>
-              <Text style={styles.sectionMore}>...</Text>
-            </TouchableOpacity>
           </View>
+          <Text style={styles.sectionSubtitle}>Son 5 görev listelenmektedir.</Text>
 
           <ScrollView 
             style={styles.todoList}
@@ -399,47 +650,86 @@ export const HomeScreen = () => {
             ) : error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : (
-              <>
-                <View style={styles.todoHeader}>
-                  <Text style={styles.todoHeaderTitle}>Bugünün Görevleri</Text>
-                  <Text style={styles.todoCount}>{todos.length} görev</Text>
-                </View>
-                {todos.map(todo => (
-                  <TouchableOpacity
-                    key={todo.id}
-                    style={styles.todoItem}
-                    onPress={() => toggleTodo(todo.id)}
-                  >
-                    <View style={styles.todoLeft}>
-                      <TouchableOpacity 
-                        style={[
-                          styles.checkbox,
-                          todo.status === 'completed' && styles.checkboxChecked
-                        ]}
-                        onPress={() => toggleTodo(todo.id)}
-                      >
-                        {todo.status === 'completed' && <Text style={styles.checkmark}>✓</Text>}
-                      </TouchableOpacity>
-                      <View>
-                        <Text style={[
-                          styles.todoText,
-                          todo.status === 'completed' && styles.todoTextCompleted
-                        ]}>{todo.task}</Text>
-                        <Text style={styles.todoDate}>
-                          {new Date(todo.created_at).toLocaleDateString('tr-TR', {
-                            day: 'numeric',
-                            month: 'long'
-                          })}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </>
+              renderTodos()
             )}
           </ScrollView>
         </View>
-      </View>
+      </ScrollView>
+
+      {/* Add Todo Modal */}
+      <Modal
+        visible={isAddTodoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeAddTodoModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Yeni Görev Ekle</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Görev adı"
+              value={newTodoTask}
+              onChangeText={setNewTodoTask}
+              placeholderTextColor="#A0AEC0"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setNewTodoTask('');
+                  closeAddTodoModal();
+                }}
+              >
+                <Text style={[styles.buttonText, styles.cancelButtonText]}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.submitButton]}
+                onPress={addNewTodo}
+              >
+                <Text style={[styles.buttonText, styles.submitButtonText]}>Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isAddCategoryModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsAddCategoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Yeni Kategori Ekle</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Kategori adı"
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              placeholderTextColor="#A0AEC0"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setNewCategoryName('');
+                  setIsAddCategoryModalVisible(false);
+                }}
+              >
+                <Text style={[styles.buttonText, styles.cancelButtonText]}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.submitButton]}
+                onPress={handleAddCategory}
+              >
+                <Text style={[styles.buttonText, styles.submitButtonText]}>Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -453,9 +743,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  greetingContainer: {
+    marginLeft: 12,
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  username: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  headerIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#64748B',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   menuIcon: {
     width: 24,
@@ -465,31 +809,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  greeting: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#2C3E50',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+    fontSize: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  modalButtons: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#EDF2F7',
+  },
+  submitButton: {
+    backgroundColor: '#4B7BF5',
+  },
+  buttonText: {
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelButtonText: {
+    color: '#2D3748',
+  },
+  submitButtonText: {
+    color: '#fff',
   },
   drawerMenu: {
-    width: '80%',
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 300,
     backgroundColor: '#fff',
     paddingTop: 50,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
   },
   drawerHeader: {
     alignItems: 'center',
@@ -590,45 +981,34 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   todoSection: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  todoContainer: {
-    flex: 1,
-  },
-  todoList: {
-    flex: 1,
-    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   todoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 8,
+    marginBottom: 12,
   },
   todoHeaderTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: '#2D3748',
   },
   todoCount: {
     fontSize: 14,
-    color: '#7F8C8D',
-    backgroundColor: '#F5F6FA',
-    paddingHorizontal: 12,
+    color: '#718096',
+    backgroundColor: '#EDF2F7',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -638,24 +1018,27 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  todoItemCompleted: {
+    backgroundColor: '#F8F9FA',
+  },
   todoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
+    borderColor: '#E2E8F0',
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+    backgroundColor: '#4B7BF5',
+    borderColor: '#4B7BF5',
   },
   checkmark: {
     color: '#fff',
@@ -663,18 +1046,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   todoText: {
-    fontSize: 16,
-    color: '#2C3E50',
+    fontSize: 15,
+    color: '#2D3748',
     marginBottom: 4,
-    fontWeight: '500',
   },
   todoTextCompleted: {
+    color: '#A0AEC0',
     textDecorationLine: 'line-through',
-    color: '#95A5A6',
   },
   todoDate: {
     fontSize: 12,
-    color: '#95A5A6',
+    color: '#718096',
   },
   todoActions: {
     flexDirection: 'row',
@@ -869,5 +1251,204 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     paddingHorizontal: 4,
+  },
+  menuContent: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  logoutButton: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    padding: 16,
+  },
+  menuBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  menuBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  todoContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  todoScrollView: {
+    flexGrow: 0,
+  },
+  todoCard: {
+    width: 150,
+    height: 180,
+    borderRadius: 15,
+    padding: 16,
+    marginLeft: 16,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    justifyContent: 'space-between',
+  },
+  addTodoCard: {
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allTodosCard: {
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingTodoCard: {
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  completedTodoCard: {
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  allTodosIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  allTodosIconImage: {
+    width: 24,
+    height: 24,
+  },
+  allTodosText: {
+    color: '#2C3E50',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  todoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8,
+  },
+  completedTodoTitle: {
+    color: '#A0AEC0',
+    textDecorationLine: 'line-through',
+  },
+  todoDate: {
+    fontSize: 12,
+    color: '#718096',
+  },
+  todoStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FBD38D',
+    marginRight: 6,
+  },
+  completedStatusDot: {
+    backgroundColor: '#4B7BF5',
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#ED8936',
+  },
+  completedStatusText: {
+    color: '#4B7BF5',
+  },
+  addTodoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addTodoIconText: {
+    fontSize: 24,
+    color: '#4B7BF5',
+  },
+  addTodoText: {
+    color: '#666',
+    marginTop: 8,
+  },
+  addTodoSubText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#718096',
+    marginLeft: 16,
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  categoryCard: {
+    width: 150,
+    height: 180,
+    borderRadius: 15,
+    padding: 16,
+    marginLeft: 16,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    justifyContent: 'space-between',
+  },
+  addCategoryCard: {
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8,
+  },
+  categoryDate: {
+    fontSize: 12,
+    color: '#718096',
+  },
+  addIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addIconText: {
+    fontSize: 24,
+    color: '#4B7BF5',
+  },
+  addCategoryText: {
+    color: '#666',
+    marginTop: 8,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
   },
 });

@@ -15,8 +15,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { getNoteDetail, deleteNote } from '../services/noteService';
 import { Note } from '../types/note';
 import { RootStackParamList } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { getCategoryName } from '../services/categoryService';
 
 type NoteDetailRouteProp = RouteProp<RootStackParamList, 'NoteDetail'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const NoteDetailScreen = () => {
   const [note, setNote] = useState<Note | null>(null);
@@ -24,8 +27,9 @@ export const NoteDetailScreen = () => {
   const [error, setError] = useState<string>('');
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [categoryName, setCategoryName] = useState<string>('');
   
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<NoteDetailRouteProp>();
   const { noteId } = route.params;
 
@@ -40,6 +44,12 @@ export const NoteDetailScreen = () => {
 
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    if (note?.category_id) {
+      loadCategoryName(note.category_id);
+    }
+  }, [note]);
 
   const loadNoteDetail = async () => {
     try {
@@ -69,6 +79,17 @@ export const NoteDetailScreen = () => {
       Alert.alert('Hata', error.message || 'Not silinirken bir hata oluştu');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const loadCategoryName = async (categoryId: number) => {
+    try {
+      const response = await getCategoryName(categoryId);
+      if (response.status) {
+        setCategoryName(response.data.name);
+      }
+    } catch (error) {
+      console.error('Kategori adı yüklenirken hata:', error);
     }
   };
 
@@ -152,23 +173,26 @@ export const NoteDetailScreen = () => {
         <Text style={styles.title}>{note.title}</Text>
         <Text style={styles.noteText}>{note.content}</Text>
 
-        <View style={styles.stats}>
+
+        <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Image 
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/709/709631.png' }}
-              style={styles.statIcon}
-            />
-            <Text style={styles.statText}>
-              {note.content.split(' ').length} kelime
+            <Text style={styles.statLabel}>Kelime</Text>
+            <Text style={styles.statValue}>
+              {note?.content.split(/\s+/).filter(Boolean).length || 0}
             </Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Image 
-              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3114/3114812.png' }}
-              style={styles.statIcon}
-            />
-            <Text style={styles.statText}>
-              {note.content.length} karakter
+            <Text style={styles.statLabel}>Karakter</Text>
+            <Text style={styles.statValue}>
+              {note?.content.length || 0}
+            </Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Kategori</Text>
+            <Text style={styles.statValue}>
+              {categoryName || 'Yükleniyor...'}
             </Text>
           </View>
         </View>
@@ -365,5 +389,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#F7FAFC',
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#718096',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E2E8F0',
   },
 }); 

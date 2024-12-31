@@ -9,6 +9,12 @@ import { AllNotesScreen } from '../screens/AllNotesScreen';
 import { NoteDetailScreen } from '../screens/NoteDetailScreen';
 import { AddNoteScreen } from '../screens/AddNoteScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { TodoListScreen } from '../screens/TodoListScreen';
+import { CategoryNotesScreen } from '../screens/CategoryNotesScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { FAQScreen } from '../screens/FAQScreen';
+import { AboutScreen } from '../screens/AboutScreen';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,11 +25,7 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!authState?.authenticated ? (
           <>
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -52,6 +54,30 @@ export const AppNavigator = () => {
               name="Notifications" 
               component={NotificationsScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="TodoList" 
+              component={TodoListScreen}
+              options={{
+                headerShown: false
+              }}
+            />
+            <Stack.Screen name="CategoryNotes" component={CategoryNotesScreen} />
+            <Stack.Screen 
+              name="EditProfile" 
+              component={EditProfileScreen} 
+            />
+            <Stack.Screen 
+              name="ChangePassword" 
+              component={ChangePasswordScreen} 
+            />
+            <Stack.Screen 
+              name="FAQ" 
+              component={FAQScreen} 
+            />
+            <Stack.Screen 
+              name="About" 
+              component={AboutScreen} 
             />
           </>
         )}
