@@ -1,45 +1,93 @@
 # 📱 Notepad Mobile App
 
-Modern, güvenli ve kullanıcı dostu not tutma uygulaması. React Native ve TypeScript ile geliştirilmiş kapsamlı bir mobil uygulama.
+A modern and user-friendly note-taking application built with React Native and TypeScript.
 
-## ✨ Özellikler
+## ✨ Features
 
-### 📝 Not Yönetimi
-- Not oluşturma, düzenleme ve silme
-- Kategori bazlı organizasyon
-- Zengin metin formatı
-- Notları paylaşma
-- Özel/Herkese açık not seçeneği
+- 📝 Note Management (Create, Edit, Delete)
+- 📂 Category Organization
+- ✅ Todo List Management
+- 👤 User Authentication
+- 🔔 Push Notifications
+- 🌙 Dark Mode (Coming Soon)
+- 🌍 Multi-language Support (Coming Soon)
 
-### ✅ Yapılacaklar Listesi
-- Görev oluşturma ve yönetme
-- Tamamlanma durumu takibi
-- Tarih bazlı filtreleme
-- Sürükle-bırak organizasyon
-- Öncelik belirleme
+## 🛠️ Tech Stack
 
-### 👤 Kullanıcı Sistemi
-- Güvenli giriş/kayıt
-- Profil yönetimi
-- Şifre değiştirme
-- Bildirim tercihleri
-- Kullanıcı rolleri ve izinleri
-
-### 🔔 Bildirim Sistemi
-- Gerçek zamanlı bildirimler
-- Okundu/okunmadı durumu
-- Bildirim filtreleme
-- Öncelik seviyeleri
-
-## 🛠️ Teknik Detaylar
-
-### Kullanılan Teknolojiler
 - React Native
 - TypeScript
 - React Navigation
 - Context API
 - Axios
 - AsyncStorage
-- Custom Event Emitter
 
-### Proje Yapısı
+## 🚀 Installation
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. iOS setup: `cd ios && pod install`
+4. Run the app:
+   ```bash
+   # iOS
+   npm run ios
+
+   # Android
+   npm run android
+   ```
+
+## 📱 Screenshots
+
+[Screenshots coming soon]
+
+## 📞 Contact
+
+- Website: [notepad-app.com](https://notepad-app.com)
+- Email: contact@notepad-app.com
+
+---
+
+# 📱 Not Tutma Uygulaması
+
+React Native ve TypeScript ile geliştirilmiş modern bir not tutma uygulaması.
+
+## ✨ Özellikler
+
+- 📝 Not Yönetimi (Oluşturma, Düzenleme, Silme)
+- 📂 Kategori Organizasyonu
+- ✅ Yapılacaklar Listesi
+- 👤 Kullanıcı Kimlik Doğrulama
+- 🔔 Anlık Bildirimler
+- 🌙 Karanlık Mod (Yakında)
+- 🌍 Çoklu Dil Desteği (Yakında)
+
+## 🛠️ Teknolojiler
+
+- React Native
+- TypeScript
+- React Navigation
+- Context API
+- Axios
+- AsyncStorage
+
+## 🚀 Kurulum
+
+1. Repoyu klonlayın
+2. Bağımlılıkları yükleyin: `npm install`
+3. iOS kurulumu: `cd ios && pod install`
+4. Uygulamayı çalıştırın:
+   ```bash
+   # iOS
+   npm run ios
+
+   # Android
+   npm run android
+   ```
+
+## 📱 Ekran Görüntüleri
+
+[Ekran görüntüleri eklenecek]
+
+## 📞 İletişim
+
+- Website: [notepad-app.com](https://notepad-app.com)
+- Email: contact@notepad-app.com
