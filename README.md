@@ -39,11 +39,6 @@ A modern and user-friendly note-taking application built with React Native and T
 
 [Screenshots coming soon]
 
-## 📞 Contact
-
-- Website: [notepad-app.com](https://notepad-app.com)
-- Email: contact@notepad-app.com
-
 ---
 
 # 📱 Not Tutma Uygulaması
@@ -86,8 +81,3 @@ React Native ve TypeScript ile geliştirilmiş modern bir not tutma uygulaması.
 ## 📱 Ekran Görüntüleri
 
 [Ekran görüntüleri eklenecek]
-
-## 📞 İletişim
-
-- Website: [notepad-app.com](https://notepad-app.com)
-- Email: contact@notepad-app.com
