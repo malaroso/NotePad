@@ -1,12 +1,14 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from './constants';
+import { Alert } from 'react-native';
 
 const TOKEN_KEY = 'auth_token';
 
 console.log('Creating axios instance with baseURL:', API_URL);
 
 let logoutCallback: (() => void) | null = null;
+let isTokenErrorHandled = false;
 
 export const setLogoutCallback = (callback: () => void) => {
     logoutCallback = callback;
@@ -50,15 +52,43 @@ axiosInstance.interceptors.request.use(
     }
 );
 
+const handleTokenError = async () => {
+    if (isTokenErrorHandled) return;
+    
+    isTokenErrorHandled = true;
+    
+    Alert.alert(
+        "Oturum Süresi Doldu",
+        "Güvenliğiniz için oturumunuz sonlandırıldı. Lütfen tekrar giriş yapın.",
+        [
+            {
+                text: "Tamam",
+                onPress: async () => {
+                    await handleLogout();
+                    isTokenErrorHandled = false;
+                }
+            }
+        ]
+    );
+};
+
 axiosInstance.interceptors.response.use(
     (response) => {
         if (response.data?.status === false && response.data?.message?.includes('Token')) {
-            handleLogout();
+            handleTokenError();
         }
-        console.log('Response data:', response.data);
         return response;
     },
     async (error) => {
+        if (
+            error.response?.status === 401 || 
+            error.response?.data?.message?.includes('Token') ||
+            error.response?.data?.message?.includes('token')
+        ) {
+            handleTokenError();
+            return Promise.reject(error);
+        }
+
         console.log('Response error full details:', {
             message: error.message,
             code: error.code,
@@ -66,18 +96,6 @@ axiosInstance.interceptors.response.use(
             request: error.request,
             config: error.config
         });
-
-        if (
-            error.response?.status === 401 || 
-            error.response?.data?.message?.includes('Token') ||
-            error.response?.data?.message?.includes('token')
-        ) {
-
-            await handleLogout();
-            return Promise.reject({
-                message: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.'
-            });
-        }
 
         if (!error.response) {
             return Promise.reject({

@@ -2,6 +2,7 @@ import axiosInstance from '../config/axios';
 import { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from 'expo-secure-store';
 import { setLogoutCallback } from '../config/axios';
+import { Alert } from 'react-native';
 
 // Sadece kullanılan prop'ları tutalım
 interface AuthProps {

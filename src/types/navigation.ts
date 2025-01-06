@@ -4,7 +4,9 @@ import { UserDetail } from "./userDetail";
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
-  Home: undefined;
+  Home: {
+    refresh?: boolean;
+  };
   Profile: undefined;
   AllNotes: undefined;
   NoteDetail: {

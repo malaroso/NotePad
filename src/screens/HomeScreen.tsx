@@ -17,32 +17,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { getAllTodos, addTodo, updateTodoStatus } from '../services/todoService';
 import { Todo } from '../types/todo';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Note } from '../types/note';
 import { getAllNotes } from '../services/noteService';
 import { getUnreadCount } from '../services/notificationService';
 import { getCategories, Category, addCategory } from '../services/categoryService';
 import { getUserDetail } from '../services/userService';
+import { RootStackParamList } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type MenuItem = {
-  id: string;
-  icon: string;
-  title: string;
-  isRed?: boolean;
-  badge?: number;
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const { onLogout } = useAuth();
   const [username, setUsername] = useState('');
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
-  const slideAnim = useRef(new Animated.Value(-300)).current;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [notes, setNotes] = useState<Note[]>([]);
@@ -57,7 +48,7 @@ export const HomeScreen = () => {
   const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const route = useRoute();
+  const route = useRoute<HomeScreenRouteProp>();
 
   useEffect(() => {
     loadTodos();
@@ -1289,10 +1280,6 @@ const styles = StyleSheet.create({
     color: '#A0AEC0',
     textDecorationLine: 'line-through',
   },
-  todoDate: {
-    fontSize: 12,
-    color: '#718096',
-  },
   todoStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1370,19 +1357,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#718096',
   },
-  addIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  addIconText: {
-    fontSize: 24,
-    color: '#4B7BF5',
-  },
   addCategoryText: {
     color: '#666',
     marginTop: 8,
@@ -1390,5 +1364,9 @@ const styles = StyleSheet.create({
   loadingContainer: {
     padding: 20,
     alignItems: 'center',
+  },
+  todoList: {
+    flex: 1,
+    width: '100%',
   },
 });
