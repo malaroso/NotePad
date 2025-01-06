@@ -228,67 +228,7 @@ export const HomeScreen = () => {
     }
   };
 
-  const showMenu = () => {
-    setIsMenuVisible(true);
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
 
-  const hideMenu = () => {
-    Animated.timing(slideAnim, {
-      toValue: -300,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setIsMenuVisible(false));
-  };
-
-  const menuItems: MenuItem[] = [
-    {
-      id: 'profile',
-      icon: 'https://cdn-icons-png.flaticon.com/512/1077/1077063.png',
-      title: 'Profil'
-    },
-    {
-      id: 'notifications',
-      icon: 'https://cdn-icons-png.flaticon.com/512/3239/3239952.png',
-      title: 'Bildirimler',
-      badge: unreadCount > 0 ? unreadCount : undefined
-    },
-    {
-      id: 'share',
-      icon: 'https://cdn-icons-png.flaticon.com/512/2099/2099085.png',
-      title: 'Share with someone'
-    },
-    {
-      id: 'help',
-      icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828940.png',
-      title: 'Help Center'
-    },
-  ];
-
-  const handleMenuItemPress = (id: string) => {
-    switch (id) {
-      case 'profile':
-        navigation.navigate('Profile');
-        hideMenu();
-        break;
-      case 'notifications':
-        navigation.navigate('Notifications');
-        setUnreadCount(0);
-        hideMenu();
-        break;
-      case 'logout':
-        handleLogout();
-        hideMenu();
-        break;
-      default:
-        hideMenu();
-        break;
-    }
-  };
 
   const openAddTodoModal = () => {
     setIsAddTodoModalVisible(true);
