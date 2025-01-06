@@ -1,7 +1,7 @@
 import axiosInstance from '../config/axios';
 import { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from 'expo-secure-store';
-import eventEmitter from '../utils/eventEmitter';
+import { setLogoutCallback } from '../config/axios';
 
 // Sadece kullanılan prop'ları tutalım
 interface AuthProps {
@@ -44,17 +44,9 @@ export const AuthProvider = ({children}: any) => {
         };
         loadToken();
 
-        const handleAuthError = () => {
-            setAuthState({
-                token: null,
-                authenticated: false
-            });
-        };
+        setLogoutCallback(logout);
 
-        eventEmitter.addListener('auth_error', handleAuthError);
-        return () => {
-            eventEmitter.removeListener('auth_error', handleAuthError);
-        };
+
     }, []);
 
     const login = async (username: string, password: string) => {
@@ -103,6 +95,8 @@ export const AuthProvider = ({children}: any) => {
             console.error("Logout error:", error);
         }
     };
+
+    
 
     const value = {
         onLogin: login,

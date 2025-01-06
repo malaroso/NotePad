@@ -1,11 +1,16 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import eventEmitter from '../utils/eventEmitter';
 import { API_URL } from './constants';
 
 const TOKEN_KEY = 'auth_token';
 
 console.log('Creating axios instance with baseURL:', API_URL);
+
+let logoutCallback: (() => void) | null = null;
+
+export const setLogoutCallback = (callback: () => void) => {
+    logoutCallback = callback;
+};
 
 const axiosInstance = axios.create({
     baseURL: API_URL,
@@ -48,7 +53,7 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
     (response) => {
         if (response.data?.status === false && response.data?.message?.includes('Token')) {
-            handleAuthError();
+            handleLogout();
         }
         console.log('Response data:', response.data);
         return response;
@@ -67,7 +72,8 @@ axiosInstance.interceptors.response.use(
             error.response?.data?.message?.includes('Token') ||
             error.response?.data?.message?.includes('token')
         ) {
-            await handleAuthError();
+
+            await handleLogout();
             return Promise.reject({
                 message: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.'
             });
@@ -95,13 +101,16 @@ axiosInstance.interceptors.response.use(
     }
 );
 
-const handleAuthError = async () => {
+const handleLogout = async () => {
     try {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        eventEmitter.emit('auth_error');
-    } catch (error) {
-        console.error('Auth error handling failed:', error);
+        await SecureStore.deleteItemAsync('auth_token');
+        if (logoutCallback) { //Eğer logoutCallback atanmışsa (yani null değilse), callback tetiklenir.
+            await logoutCallback();
+        }
+    } catch (logoutError) {
+        console.error("Logout error:", logoutError);
     }
 };
+
 
 export default axiosInstance; 
