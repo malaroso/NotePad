@@ -9,8 +9,6 @@ A modern and user-friendly note-taking application built with React Native and T
 - ✅ Todo List Management
 - 👤 User Authentication
 - 🔔 Push Notifications
-- 🌙 Dark Mode (Coming Soon)
-- 🌍 Multi-language Support (Coming Soon)
 
 ## 🛠️ Tech Stack
 
@@ -52,8 +50,6 @@ React Native ve TypeScript ile geliştirilmiş modern bir not tutma uygulaması.
 - ✅ Yapılacaklar Listesi
 - 👤 Kullanıcı Kimlik Doğrulama
 - 🔔 Anlık Bildirimler
-- 🌙 Karanlık Mod (Yakında)
-- 🌍 Çoklu Dil Desteği (Yakında)
 
 ## 🛠️ Teknolojiler
 
