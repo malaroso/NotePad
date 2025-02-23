@@ -8,6 +8,9 @@ import {
   Image,
   SafeAreaView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -48,61 +51,68 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topSection}>
-        <Image
-          source={{ uri: NOTEPAD_LOGO }}
-          style={styles.logo}
-        />
-        <Text style={styles.title}>Notepad</Text>
-        <Text style={styles.subtitle}>
-          Notes in this book and you can write anything down here and you can also here and do it more
-        </Text>
-      </View>
-
-      <View style={styles.bottomSection}>
-        <Text style={styles.loginTitle}>Login Account</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Kullanıcı Adı"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        
-        <TouchableOpacity style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Continue</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.orText}>Or continue with</Text>
-
-        <View style={styles.socialButtons}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image 
-              source={{ uri: FACEBOOK_ICON }} 
-              style={styles.socialIcon} 
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.topSection}>
+            <Image
+              source={{ uri: NOTEPAD_LOGO }}
+              style={styles.logo}
             />
-            <Text>Facebook</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image 
-              source={{ uri: GOOGLE_ICON }} 
-              style={styles.socialIcon} 
+            <Text style={styles.title}>Notepad</Text>
+            <Text style={styles.subtitle}>
+              Notes in this book and you can write anything down here and you can also here and do it more
+            </Text>
+          </View>
+
+          <View style={styles.bottomSection}>
+            <Text style={styles.loginTitle}>Login Account</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Kullanıcı Adı"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
             />
-            <Text>Google</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            
+            <TouchableOpacity style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+              <Text style={styles.loginButtonText}>Continue</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.orText}>Or continue with</Text>
+
+            <View style={styles.socialButtons}>
+              <TouchableOpacity style={styles.socialButton}>
+                <Image 
+                  source={{ uri: FACEBOOK_ICON }} 
+                  style={styles.socialIcon} 
+                />
+                <Text>Facebook</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton}>
+                <Image 
+                  source={{ uri: GOOGLE_ICON }} 
+                  style={styles.socialIcon} 
+                />
+                <Text>Google</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -198,5 +208,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 }); 

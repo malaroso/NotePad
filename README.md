@@ -35,7 +35,10 @@ A modern and user-friendly note-taking application built with React Native and T
 
 ## 📱 Screenshots
 
-[Screenshots coming soon]
+![Home Screen](assets/1.png)
+![Note Detail](assets/2.png)
+![Categories](assets/3.png)
+![Settings](assets/4.png)
 
 ---
 
@@ -76,4 +79,7 @@ React Native ve TypeScript ile geliştirilmiş modern bir not tutma uygulaması.
 
 ## 📱 Ekran Görüntüleri
 
-[Ekran görüntüleri eklenecek]
+![Ekran görüntüsü 1](assets/1.png)
+![Ekran görüntüsü 2](assets/2.png)
+![Ekran görüntüsü 3](assets/3.png)
+![Ekran görüntüsü 4](assets/4.png)
