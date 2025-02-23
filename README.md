@@ -19,6 +19,13 @@ A modern and user-friendly note-taking application built with React Native and T
 - Axios
 - AsyncStorage
 
+### Backend
+- PHP 8.1
+- MySQL 8.0
+- RESTful API
+- JWT Authentication
+- Apache Server
+
 ## 🚀 Installation
 
 1. Clone the repository
@@ -33,14 +40,6 @@ A modern and user-friendly note-taking application built with React Native and T
    npm run android
    ```
 
-## 📱 Screenshots
-
-![Home Screen](assets/1.png)
-![Note Detail](assets/2.png)
-![Categories](assets/3.png)
-![Settings](assets/4.png)
-
----
 
 # 📱 Not Tutma Uygulaması
 
@@ -62,6 +61,14 @@ React Native ve TypeScript ile geliştirilmiş modern bir not tutma uygulaması.
 - Context API
 - Axios
 - AsyncStorage
+
+### API tarafı
+
+- PHP 8.1
+- MySQL 8.0
+- RESTful API
+- JWT Authentication
+- Apache Server
 
 ## 🚀 Kurulum
 
